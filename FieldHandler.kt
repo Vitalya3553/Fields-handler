@@ -1,4 +1,3 @@
-
 class FieldHandler(private vararg val fieldProperties: FieldProperties, private val timer: Long? = null) {
 
     private lateinit var condition: () -> Boolean
