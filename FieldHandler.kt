@@ -1,9 +1,7 @@
-
-
-class FieldHandler(private vararg val invalidFieldHandler: FieldProperties, private val timer: Long?) {
+class FieldHandler(private vararg val fieldProperties: FieldProperties, private val timer: Long? = null) {
 
     private lateinit var condition: () -> Boolean
-    private var isSleeping = MutableStateFlow(false)
+    private var _isSleeping = MutableStateFlow(false)
     private var sleepingJob : Job? = null
 
     data class FieldProperties(
@@ -38,40 +36,24 @@ class FieldHandler(private vararg val invalidFieldHandler: FieldProperties, priv
         setListeners()
     }
 
-    private  fun setTimer(code: () -> Unit) {
-        if(timer == null){
-            return
-        }
-        if (sleepingJob!= null && sleepingJob!!.isActive){
-            sleepingJob!!.cancel()
-        }
-        sleepingJob = CoroutineScope(Dispatchers.Main).launch {
-            if(!isSleeping.value) isSleeping.value = true
-
-            delay(timer)
-
-            isSleeping.value = false
-
-            code()
-        }
-    }
+    
 
     private fun checkDuplicate(){
-        if (invalidFieldHandler.count() != invalidFieldHandler.distinct().count()){
+        if (fieldProperties.count() != fieldProperties.distinct().count()){
             throw UsingTheSameObjectsError()
         }
     }
 
     private fun setListeners(){
 
-        invalidFieldHandler.map {
+        fieldProperties.map {
 
             it.inputLayout.isErrorEnabled = false
 
             it.editText.addTextChangedListener(object : TextWatcher {
                 override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
                 override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
-                   setTimer(){
+                   setTimer{
                        Log.e("Field Handler", "TExt changed")
                        condition  = (it.rule ?:  {true})
                        if(condition()) {
@@ -86,7 +68,7 @@ class FieldHandler(private vararg val invalidFieldHandler: FieldProperties, priv
 
             })
             if(timer == null){
-                it.editText.setOnFocusChangeListener { v, hasFocus ->
+                it.editText.setOnFocusChangeListener { _, hasFocus ->
                     if(!hasFocus){
                         condition = it.rule ?:  {true}
                         if(!condition()){
@@ -102,18 +84,37 @@ class FieldHandler(private vararg val invalidFieldHandler: FieldProperties, priv
 
     }
     private fun setErrorDrawables(drawable: Int){
-        invalidFieldHandler.map {
+        fieldProperties.map {
             it.inputLayout.setErrorIconDrawable(drawable)
         }
     }
 
+    private  fun setTimer(code: () -> Unit) {
+        if(timer == null){
+            return
+        }
+        if (sleepingJob!= null && sleepingJob!!.isActive){
+            sleepingJob!!.cancel()
+        }
+        sleepingJob = CoroutineScope(Dispatchers.Main).launch {
+            if(!_isSleeping.value) _isSleeping.value = true
+
+            delay(timer)
+
+            _isSleeping.value = false
+
+            withContext(Dispatchers.Default){
+                code()
+            }
+        }
+    }
     fun isAllCorrect(showErrorIfNotShowing : Boolean): Boolean {
 
         if (showErrorIfNotShowing){
 
             var isCorrect = true
 
-            invalidFieldHandler.map {
+            fieldProperties.map {
 
                 condition = (it.rule ?:  {true})
                 if(!condition()){
@@ -133,8 +134,8 @@ class FieldHandler(private vararg val invalidFieldHandler: FieldProperties, priv
             return isCorrect
 
         }else{
-            invalidFieldHandler.map {
-                condition = (it.rule ?:  {true}) as () -> Boolean
+            fieldProperties.map {
+                condition = (it.rule ?:  {true}) 
                 if(!condition()) return false
 
             }
