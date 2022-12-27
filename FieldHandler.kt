@@ -36,7 +36,7 @@ class FieldHandler(private vararg val fieldProperties: FieldProperties, private 
         setListeners()
     }
 
-    
+
 
     private fun checkDuplicate(){
         if (fieldProperties.count() != fieldProperties.distinct().count()){
@@ -91,6 +91,7 @@ class FieldHandler(private vararg val fieldProperties: FieldProperties, private 
 
     private  fun setTimer(code: () -> Unit) {
         if(timer == null){
+            code()
             return
         }
         if (sleepingJob!= null && sleepingJob!!.isActive){
@@ -135,7 +136,7 @@ class FieldHandler(private vararg val fieldProperties: FieldProperties, private 
 
         }else{
             fieldProperties.map {
-                condition = (it.rule ?:  {true}) 
+                condition = (it.rule ?:  {true})
                 if(!condition()) return false
 
             }
