@@ -1,3 +1,4 @@
+
 class FieldHandler(private vararg val fieldProperties: FieldProperties, private val timer: Long? = null) {
 
     private lateinit var condition: () -> Boolean
@@ -55,8 +56,10 @@ class FieldHandler(private vararg val fieldProperties: FieldProperties, private 
                 override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
                    setTimer{
                        Log.e("Field Handler", "TExt changed")
-                       condition  = (it.rule ?:  {true})
-                       if(condition()) {
+                       val rule = it.rule
+                       condition  = (rule?:  {true})
+                       Log.e("Field Handler", condition().toString())
+                       if(condition() && it.inputLayout.isErrorEnabled) {
                            it.inputLayout.isErrorEnabled = false
                        }
 
@@ -67,22 +70,20 @@ class FieldHandler(private vararg val fieldProperties: FieldProperties, private 
                 override fun afterTextChanged(s: Editable?) {}
 
             })
-            if(timer == null){
-                it.editText.setOnFocusChangeListener { _, hasFocus ->
-                    if(!hasFocus){
-                        condition = it.rule ?:  {true}
-                        if(!condition()){
-                            it.inputLayout.isErrorEnabled = true
-                            it.inputLayout.error = it.errorText
-                        }
+
+            it.editText.setOnFocusChangeListener { _, hasFocus ->
+                if(!hasFocus){
+                    condition = it.rule ?:  {true}
+                    if(!condition()){
+                        it.inputLayout.isErrorEnabled = true
+                        it.inputLayout.error = it.errorText
                     }
                 }
             }
-
         }
 
-
     }
+
     private fun setErrorDrawables(drawable: Int){
         fieldProperties.map {
             it.inputLayout.setErrorIconDrawable(drawable)
@@ -99,14 +100,9 @@ class FieldHandler(private vararg val fieldProperties: FieldProperties, private 
         }
         sleepingJob = CoroutineScope(Dispatchers.Main).launch {
             if(!_isSleeping.value) _isSleeping.value = true
-
             delay(timer)
-
             _isSleeping.value = false
-
-            withContext(Dispatchers.Default){
-                code()
-            }
+            code()
         }
     }
     fun isAllCorrect(showErrorIfNotShowing : Boolean): Boolean {
